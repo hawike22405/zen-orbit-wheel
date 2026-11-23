@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbit Wheel — Interactive Zen preview</title>
+  <link rel="stylesheet" href="../chrome/CSS/OrbitWheel.uc.css" />
+  <link rel="stylesheet" href="demo.css" />
+  <script src="fake-browser.js"></script>
+  <script defer src="../chrome/JS/OrbitWheel.uc.js"></script>
+  <script defer src="demo.js"></script>
+</head>
+<body>
+  <main class="demo-page">
+    <header>
+      <div class="logo">✦ ORBIT <span>for Zen Browser</span></div>
+      <a href="https://github.com/FlafyDev/fantasy_rice" target="_blank" rel="noopener noreferrer">Inspired by fantasy_rice</a>
+    </header>
+    <section class="hero">
+      <p class="eyebrow">NATIVE TAB WHEEL  /  INTERACTIVE CONCEPT</p>
+      <h1>Tabs, summoned.</h1>
+      <p>Watch your Zen tabs circle a glowing summoning ring. Open the switcher to test the movement, selection and mouse-responsive perspective.</p>
+      <div class="controls">
+        <button id="open">Open wheel</button>
+        <button id="prev">← Previous</button>
+        <button id="next">Next →</button>
+        <button id="close">Close</button>
+      </div>
+      <p class="tip">Shortcut: <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>O</kbd> · Scroll to cycle · <kbd>Enter</kbd> to select · <kbd>Esc</kbd> to exit.</p>
+      <div id="chosen" aria-live="polite">Selected: GitHub — Projects</div>
+    </section>
+  </main>
+</body>
+</html>

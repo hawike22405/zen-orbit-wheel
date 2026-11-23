@@ -1,0 +1,11 @@
+{
+  "name": "zen-orbit-wheel",
+  "version": "0.1.0-beta",
+  "private": true,
+  "description": "Browser-chrome radial tab switcher for Zen Browser (experimental)",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/check.mjs",
+    "check": "node --check chrome/JS/OrbitWheel.uc.js && node --check demo/fake-browser.js && node --check demo/demo.js"
+  }
+}
