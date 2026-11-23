@@ -29,7 +29,6 @@
     thumbnailCapture: true,
     thumbnailLimit: 12,
     screenshotTTL: 25000,
-    maxTabs: 24,
     // Restrict selection to the current Zen workspace.
     visibleWorkspaceOnly: true,
     ringDiameter: 444,
@@ -37,6 +36,7 @@
 
   const HTML_NS = 'http://www.w3.org/1999/xhtml';
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  const WHEEL_TAB_LIMIT = 7;
   const SYSTEM_CAPTURE = { capture: true, mozSystemGroup: true };
   const TAB_CHANGE_EVENTS = ['TabClose', 'TabOpen', 'TabSelect', 'TabHide'];
   const elt = (tag, cl, text) => {
@@ -137,20 +137,32 @@
       const center = elt('div', 'orbit-center');
       const circle = elt('div', 'orbit-circle');
       const cards = elt('div', 'orbit-cards');
-      center.append(circle, cards);
+      const allAction = elt('button', 'orbit-all-action', 'Show all tabs');
+      allAction.type = 'button';
+      allAction.hidden = true;
+      allAction.setAttribute('aria-controls', 'orbit-tab-list');
+      allAction.addEventListener('click', () => this.showAllTabs());
+      center.append(circle, cards, allAction);
+      const list = elt('section', 'orbit-list');
+      list.id = 'orbit-tab-list';
+      list.hidden = true;
+      list.setAttribute('aria-label', 'All open tabs');
       const footer = elt('footer', 'orbit-foot');
       const hint = elt('div', 'orbit-hint', 'CTRL + TAB · CYCLE   /   ESC · CANCEL');
       const action = elt('div', 'orbit-action', 'CLICK A TAB TO SWITCH');
       footer.append(hint, action);
-      root.append(sky, forest, vignette, caption, center, footer);
+      root.append(sky, forest, vignette, caption, center, list, footer);
       document.documentElement.appendChild(root);
       this.root = root;
+      this.center = center;
       this.circle = circle;
       this.cardHost = cards;
+      this.allAction = allAction;
+      this.listHost = list;
       this.counter = meta;
       this.hint = hint;
       root.addEventListener('wheel', event => {
-        if (!this.opened) return;
+        if (!this.opened || !this.listHost.hidden || !event.deltaY) return;
         event.preventDefault();
         this.step(event.deltaY > 0 ? 1 : -1);
       }, { passive: false });
@@ -180,8 +192,10 @@
 
     canSwitchTo(tab, workspace) {
       if (!tab?.linkedBrowser || tab.closing || tab.isConnected === false ||
-          tab.hasAttribute('zen-glance-tab') ||
-          (tab.hasAttribute('zen-empty-tab') && !tab.pinned && !tab.group)) return false;
+          tab.hasAttribute('zen-glance-tab') || tab.hasAttribute('zen-empty-tab')) return false;
+      // Zen keeps unloaded pins and Essentials in the tab strip as launchers.
+      const pinned = tab.pinned || tab.hasAttribute('zen-essential');
+      if (pinned && (tab.hasAttribute('pending') || tab.hasAttribute('discarded'))) return false;
       if (!CONFIG.visibleWorkspaceOnly) return true;
       if (tab.hidden || tab.hasAttribute('hidden')) return false;
       const tabWorkspace = tab.getAttribute('zen-workspace-id');
@@ -191,9 +205,7 @@
 
     listTabs() {
       const workspace = window.gZenWorkspaces?.activeWorkspace;
-      return Array.from(gBrowser.tabs)
-        .filter(tab => this.canSwitchTo(tab, workspace))
-        .slice(0, CONFIG.maxTabs);
+      return Array.from(gBrowser.tabs).filter(tab => this.canSwitchTo(tab, workspace));
     }
 
     isTrigger(event) {
@@ -225,7 +237,7 @@
         this.dismiss(false);
       } else if (event.key === 'Enter' || event.key === ' ') {
         this.swallow(event);
-        this.dismiss(true);
+        if (!event.repeat) this.dismiss(true);
       } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown' || (event.key === 'Tab' && !event.ctrlKey)) {
         this.swallow(event);
         this.step(event.shiftKey ? -1 : +1);
@@ -239,8 +251,9 @@
       if (event.defaultPreventedByChrome ||
           !(event.ctrlKey && !event.altKey && !event.metaKey && event.key === 'Tab')) return;
       this.swallow(event);
-      if (!this.opened) this.show(true);
-      if (this.opened) this.step(event.shiftKey ? -1 : 1);
+      const direction = event.shiftKey ? -1 : 1;
+      if (!this.opened) this.show(true, direction);
+      if (this.opened) this.step(direction);
     }
 
     onKeyup(event) {
@@ -253,11 +266,23 @@
       if (event.target === window && this.opened) this.dismiss(false);
     }
 
-    show(modifierHeld) {
+    show(modifierHeld, direction = 1) {
       if (this.opened) return;
-      this.tabs = this.listTabs();
-      if (!this.tabs.length) return;
-      this.selected = this.tabs.indexOf(gBrowser.selectedTab);
+      const tabs = this.listTabs();
+      if (!tabs.length) return;
+      const overflow = tabs.length > WHEEL_TAB_LIMIT;
+      this.tabs = tabs;
+      this.selected = tabs.indexOf(gBrowser.selectedTab);
+      if (overflow) {
+        // Start with the next seven destinations so the eighth press lands
+        // on Show all tabs. The current tab is still available in the list.
+        const origin = this.selected < 0 && direction < 0 ? 0 : this.selected;
+        this.tabs = Array.from({ length: WHEEL_TAB_LIMIT }, (_, index) =>
+          tabs[modulo(origin + direction * (index + 1), tabs.length)]
+        );
+        if (direction < 0) this.tabs.reverse();
+        this.selected = -1;
+      }
       if (!modifierHeld && this.selected < 0) this.selected = 0;
       this.opened = true;
       this.holdControl = modifierHeld;
@@ -266,6 +291,11 @@
       this.captureGeneration++;
       this.root.setAttribute('aria-hidden', 'false');
       this.root.classList.add('orbit-visible');
+      this.center.hidden = false;
+      this.allAction.hidden = !overflow;
+      this.listHost.hidden = true;
+      this.listHost.replaceChildren();
+      this.updateCounter(tabs.length);
       this.hint.textContent = modifierHeld
         ? 'HOLD CTRL + TAB TO CYCLE  ·  RELEASE CTRL TO SWITCH  ·  ESC TO CANCEL'
         : 'ARROW KEYS / SCROLL TO SELECT  ·  ENTER TO SWITCH  ·  ESC TO CANCEL';
@@ -274,6 +304,40 @@
       this.updateFocus();
       this.rafId = window.requestAnimationFrame(this.frame);
       this.captureThumbnails(this.captureGeneration).catch(error => this.log('Thumbnail capture issue', error));
+    }
+
+    showAllTabs() {
+      if (!this.opened || this.allAction.hidden) return;
+      const tabs = this.listTabs();
+      if (!tabs.length) {
+        this.dismiss(false);
+        return;
+      }
+      this.stopAnimation();
+      this.holdControl = false;
+      this.center.hidden = true;
+      this.allAction.hidden = true;
+      this.cardHost.replaceChildren();
+      this.listHost.hidden = false;
+      this.tabs = tabs;
+      this.selected = Math.max(0, tabs.indexOf(gBrowser.selectedTab));
+      this.cards = tabs.map((tab, index) => {
+        const row = elt('button', 'orbit-list-tab', tab.label || 'Untitled');
+        row.type = 'button';
+        row.addEventListener('click', () => {
+          this.selected = index;
+          this.dismiss(true);
+        });
+        return row;
+      });
+      this.listHost.replaceChildren(elt('h2', 'orbit-list-title', 'All open tabs'), ...this.cards);
+      this.updateCounter(tabs.length);
+      this.hint.textContent = 'ARROW KEYS TO SELECT  ·  ENTER TO SWITCH  ·  ESC TO CANCEL';
+      this.updateFocus();
+    }
+
+    updateCounter(count) {
+      this.counter.textContent = `${String(count).padStart(2, '0')} OPEN TABS`;
     }
 
     async captureThumbnails(generation) {
@@ -285,7 +349,7 @@
         const card = this.cards[i];
         if (!tab || !card) break;
         // A suspended tab is selectable, but leave it asleep until selected.
-        if (tab.hasAttribute('pending')) continue;
+        if (tab.hasAttribute('pending') || tab.hasAttribute('discarded')) continue;
         const cached = this.snapshotCache.get(tab);
         if (cached && Date.now() - cached.timestamp < CONFIG.screenshotTTL) {
           this.setScreenshot(card, cached.url);
@@ -328,7 +392,6 @@
       this.cardPointer.clear();
       this.cards = [];
       this.cardHost.replaceChildren();
-      this.counter.textContent = `${String(this.tabs.length).padStart(2, '0')} OPEN TABS`;
       for (const [index, tab] of this.tabs.entries()) {
         const card = elt('button', 'orbit-card');
         card.type = 'button';
@@ -361,7 +424,7 @@
         card.append(preview, bottom);
         card.addEventListener('click', event => {
           event.stopPropagation();
-          this.selected = this.tabs.indexOf(tab);
+          this.selected = index;
           this.dismiss(true);
         });
         card.addEventListener('pointermove', event => {
@@ -381,9 +444,10 @@
 
     step(delta) {
       if (!this.opened || !this.tabs.length) return;
+      const choices = this.tabs.length + Number(!this.allAction.hidden);
       this.selected = this.selected < 0
         ? (delta > 0 ? 0 : this.tabs.length - 1)
-        : modulo(this.selected + delta, this.tabs.length);
+        : modulo(this.selected + delta, choices);
       this.updateFocus();
     }
 
@@ -392,6 +456,15 @@
         const selected = i === this.selected;
         this.cards[i].classList.toggle('orbit-selected', selected);
         this.cards[i].setAttribute('aria-current', selected ? 'true' : 'false');
+      }
+      if (!this.allAction.hidden) {
+        const selected = this.selected === this.tabs.length;
+        this.allAction.classList.toggle('orbit-selected', selected);
+        this.allAction.setAttribute('aria-current', selected ? 'true' : 'false');
+      }
+      if (!this.listHost.hidden) {
+        this.cards[this.selected]?.focus({ preventScroll: true });
+        this.cards[this.selected]?.scrollIntoView({ block: 'nearest' });
       }
     }
 
@@ -428,19 +501,27 @@
 
     dismiss(activate) {
       if (!this.opened) return;
+      if (activate && !this.allAction.hidden && this.selected === this.tabs.length) {
+        this.showAllTabs();
+        return;
+      }
       const chosen = this.tabs[this.selected];
-      this.captureGeneration++;
       this.opened = false;
       this.holdControl = false;
       this.root.classList.remove('orbit-visible');
       this.root.setAttribute('aria-hidden', 'true');
-      window.cancelAnimationFrame(this.rafId);
-      this.rafId = 0;
-      this.cardPointer.clear();
+      this.stopAnimation();
       if (activate && chosen && this.canSwitchTo(chosen, window.gZenWorkspaces?.activeWorkspace) &&
           Array.from(gBrowser.tabs).includes(chosen)) {
         try { gBrowser.selectedTab = chosen; } catch (error) { this.log('Could not select this tab', error); }
       }
+    }
+
+    stopAnimation() {
+      this.captureGeneration++;
+      window.cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+      this.cardPointer.clear();
     }
 
     log(...args) {

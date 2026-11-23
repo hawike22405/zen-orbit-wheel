@@ -12,6 +12,7 @@
    Or install both via `python3 scripts/install_profile.py --profile "<PROFILE>"` (on Windows use `py -3`).
 4. Restart Zen, optionally clear startup cache at `about:support` if it didn't load.
 5. Press **Ctrl+Alt+O** to open. Use arrows, mouse-wheel, click, Enter, Escape. The **Ctrl+Tab takeover is experimental** and may conflict with Zen's built-in shortcut.
+6. With more than seven eligible tabs, hold **Ctrl** and tap **Tab** eight times to highlight **Show all tabs**. Release **Ctrl** to open the list.
 
 If the overlay doesn't work, remove the two files above and restart. The installer supports `--uninstall` and does not change any AutoConfig installation itself.
 

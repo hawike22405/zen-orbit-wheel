@@ -42,8 +42,8 @@ zen-orbit-wheel/
 - Native `gBrowser` to enumerate and activate tabs in the **current Zen window**.
 - Optional `drawSnapshot()` content thumbnail previews, with a title/favicons fallback.
 - Keyboard selection, mouse selection, mouse-wheel selection, Escape cancellation.
-- Lists open tabs in the active Zen workspace, including Essentials available there, and skips Zen's internal blank and Glance tabs.
-- Up to 24 tabs by default to avoid overcrowding; the original magic circle still dynamically changes based on tab count.
+- Lists open tabs in the active Zen workspace, including loaded pins and Essentials. Unloaded pins, internal blank tabs, and Glance tabs are skipped.
+- Up to seven previews rotate on the wheel. With more than seven eligible tabs, **Show all tabs** opens a scrollable list.
 
 ## 0. Preview first (no special privileges needed)
 
@@ -131,6 +131,8 @@ Restart Zen. Clear the startup cache via `about:support` only if the script or s
 
 **Experimental native Ctrl+Tab:** Hold **Ctrl** and press **Tab** to open the wheel and cycle forward. Add **Shift** to cycle backward, then release **Ctrl** to activate the highlighted tab. Orbit captures the shortcut in Gecko's system event group before the document-level native switcher. Compatibility can vary by Zen version.
 
+With more than seven eligible tabs, the first seven presses select tab previews and the eighth highlights **Show all tabs**. Release **Ctrl** to open the list, then click a tab or use the arrow keys and **Enter**. You can also click **Show all tabs** directly from the wheel.
+
 If Zen switches tabs as usual and Orbit does not appear, continue to use **Ctrl+Alt+O**. If you see both native switching and Orbit, change `interceptCtrlTab: true` to `false` in `OrbitWheel.uc.js` and restart Zen, preventing competing actions. Zen offers keyboard customizations at `about:keyboard`, but some Firefox-derived system shortcuts may not be remappable. Do **not** expect binding Ctrl+Tab in an ordinary WebExtension to solve this.
 
 ## 5. Configuration
@@ -147,7 +149,6 @@ const CONFIG = Object.freeze({
   thumbnailCapture: true,
   thumbnailLimit: 12,
   screenshotTTL: 25000,
-  maxTabs: 24,
   visibleWorkspaceOnly: true,
   ringDiameter: 444,
 });
@@ -165,7 +166,7 @@ To rotate twice as fast, use `2 * Math.PI / 50`. To reduce screenshot work or im
 | Ctrl+Tab switches twice | Set `interceptCtrlTab: false`; use alternate shortcut |
 | Tab previews are blank or stylized | `drawSnapshot` is internal and only best-effort; Firefox/Zen may not allow all background tabs to be captured |
 | Tabs from another workspace are missing | Switch to that workspace first, or change `visibleWorkspaceOnly` in the script |
-| Screenshot/animation slows down on many tabs | Set `thumbnailCapture: false`, `maxTabs: 12` or lower, and reduce glow/blur in CSS |
+| Screenshot/animation slows down | Set `thumbnailCapture: false` or reduce glow/blur in CSS |
 | CSS/JS broken after Zen update | This uses unsupported browser internals; remove the Orbit files and retry after compatibility changes |
 | Installer says loader missing | Install upstream fx-autoconfig to the correct profile and check its `chrome/utils` files; the helper never installs privileged loader files |
 

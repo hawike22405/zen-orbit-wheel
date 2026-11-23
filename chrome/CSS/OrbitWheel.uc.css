@@ -125,6 +125,67 @@
 }
 #orbit-wheel-root .orbit-summoning-svg { display: block; width: 100%; height: 100%; }
 #orbit-wheel-root .orbit-cards { position: absolute; left: 0; top: 0; z-index: 2; }
+#orbit-wheel-root .orbit-all-action,
+#orbit-wheel-root .orbit-list-tab {
+  appearance: none !important;
+  min-width: 0;
+  cursor: pointer;
+  border: 1px solid #a77b35;
+  background: var(--orbit-ink);
+  color: #fff4c9;
+  font: 600 13px / 1.4 system-ui, sans-serif;
+}
+#orbit-wheel-root .orbit-all-action {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  padding: 9px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+#orbit-wheel-root .orbit-list {
+  position: absolute;
+  top: 49%;
+  left: 50%;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 32px));
+  max-height: 65vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: #0a101b;
+  border: 1px solid #d6a343;
+  border-radius: 16px;
+  box-shadow: 0 0 22px #f4a73553, 0 10px 40px #000b;
+}
+#orbit-wheel-root .orbit-list-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #ffdfa1;
+}
+#orbit-wheel-root .orbit-list-tab {
+  flex: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-color: #493f2b;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#orbit-wheel-root :is(.orbit-all-action, .orbit-list-tab):is(:hover, .orbit-selected) {
+  border-color: #ffe988;
+  background: #302311;
+}
+#orbit-wheel-root .orbit-all-action.orbit-selected { box-shadow: 0 0 18px #ffc52fa8; }
+#orbit-wheel-root :is(.orbit-all-action, .orbit-list-tab):focus-visible { outline: 2px solid #fff1a2; }
+#orbit-wheel-root :is(.orbit-center, .orbit-all-action, .orbit-list)[hidden] { display: none !important; }
 #orbit-wheel-root .orbit-card {
   appearance: none !important;
   position: absolute !important;
