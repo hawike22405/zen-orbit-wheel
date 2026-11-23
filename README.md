@@ -1,5 +1,13 @@
 # Orbit Wheel for Zen Browser
 
+<p align="center">
+  <img src="assets/preview.gif" alt="Zen Orbit Wheel Demo" width="100%" />
+</p>
+
+<p align="center">
+  <a href="assets/preview.mp4"><b>▶ Watch 1080p 60fps Video Demo (MP4)</b></a>
+</p>
+
 A **native browser-chrome experiment** that brings the rotating golden “summoning circle” window switcher concept from [`FlafyDev/fantasy_rice`](https://github.com/FlafyDev/fantasy_rice) to **Zen Browser** as a **tab switcher**.
 
 It is **not** a standard Firefox WebExtension: Firefox/Zen does not let extensions replace all native Ctrl+Tab shortcuts or draw privileged elements inside browser chrome. The distribution includes the files for a **userChromeJS script loader** (we recommend [`MrOtherGuy/fx-autoconfig`](https://github.com/MrOtherGuy/fx-autoconfig)). Because userChromeJS operates with browser privileges, treat it like running a local program you trust.
@@ -14,6 +22,10 @@ zen-orbit-wheel/
 ├── LICENSE
 ├── ATTRIBUTION.md
 ├── package.json
+├── assets/
+│   ├── preview.gif               <-- Animated demo preview for GitHub
+│   ├── preview.mp4               <-- 1080p 60fps high-res video recording
+│   └── preview.png               <-- Demo thumbnail image
 ├── chrome/
 │   ├── JS/OrbitWheel.uc.js        <-- Native Zen tab logic and SVG magic wheel
 │   └── CSS/OrbitWheel.uc.css      <-- Glowing ring, dark glass, cards, atmosphere
