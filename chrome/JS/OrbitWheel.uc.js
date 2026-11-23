@@ -30,13 +30,15 @@
     thumbnailLimit: 12,
     screenshotTTL: 25000,
     maxTabs: 24,
-    // Hide hidden Zen workspace tabs; also display the current tab if hidden.
+    // Restrict selection to the current Zen workspace.
     visibleWorkspaceOnly: true,
     ringDiameter: 444,
   });
 
   const HTML_NS = 'http://www.w3.org/1999/xhtml';
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  const SYSTEM_CAPTURE = { capture: true, mozSystemGroup: true };
+  const TAB_CHANGE_EVENTS = ['TabClose', 'TabOpen', 'TabSelect', 'TabHide'];
   const elt = (tag, cl, text) => {
     const e = document.createElementNS(HTML_NS, tag);
     if (cl) e.className = cl;
@@ -99,7 +101,6 @@
       this.tabs = [];
       this.cards = [];
       this.selected = 0;
-      this.origin = null;
       this.opened = false;
       this.holdControl = false;
       this.rotation = 0;
@@ -110,6 +111,7 @@
       this.closed = false;
       this.captureGeneration = 0;
       this.onKeydown = this.onKeydown.bind(this);
+      this.onCtrlTab = this.onCtrlTab.bind(this);
       this.onKeyup = this.onKeyup.bind(this);
       this.onWindowBlur = this.onWindowBlur.bind(this);
       this.onTabChange = this.onTabChange.bind(this);
@@ -138,7 +140,7 @@
       center.append(circle, cards);
       const footer = elt('footer', 'orbit-foot');
       const hint = elt('div', 'orbit-hint', 'CTRL + TAB · CYCLE   /   ESC · CANCEL');
-      const action = elt('div', 'orbit-action', 'CLICK A WINDOW TO SWITCH');
+      const action = elt('div', 'orbit-action', 'CLICK A TAB TO SWITCH');
       footer.append(hint, action);
       root.append(sky, forest, vignette, caption, center, footer);
       document.documentElement.appendChild(root);
@@ -159,10 +161,16 @@
 
     listen() {
       window.addEventListener('keydown', this.onKeydown, true);
-      window.addEventListener('keyup', this.onKeyup, true);
+      if (CONFIG.interceptCtrlTab) {
+        // Firefox's native tab switcher listens on document in this event
+        // group. Capture on window before the event reaches that listener.
+        window.addEventListener('keydown', this.onCtrlTab, SYSTEM_CAPTURE);
+        window.addEventListener('keyup', this.onKeyup, SYSTEM_CAPTURE);
+      }
       window.addEventListener('blur', this.onWindowBlur, true);
-      gBrowser.tabContainer.addEventListener('TabClose', this.onTabChange);
-      gBrowser.tabContainer.addEventListener('TabOpen', this.onTabChange);
+      for (const type of TAB_CHANGE_EVENTS) {
+        gBrowser.tabContainer.addEventListener(type, this.onTabChange);
+      }
       window.addEventListener('unload', () => this.destroy(), { once: true });
     }
 
@@ -170,14 +178,22 @@
       if (this.opened) this.dismiss(false);
     }
 
+    canSwitchTo(tab, workspace) {
+      if (!tab?.linkedBrowser || tab.closing || tab.isConnected === false ||
+          tab.hasAttribute('zen-glance-tab') ||
+          (tab.hasAttribute('zen-empty-tab') && !tab.pinned && !tab.group)) return false;
+      if (!CONFIG.visibleWorkspaceOnly) return true;
+      if (tab.hidden || tab.hasAttribute('hidden')) return false;
+      const tabWorkspace = tab.getAttribute('zen-workspace-id');
+      return !workspace || !tabWorkspace || tabWorkspace === workspace ||
+        tab.hasAttribute('zen-essential');
+    }
+
     listTabs() {
-      let tabs = Array.from(gBrowser.tabs).filter(tab => tab && tab.linkedBrowser && !tab.closing);
-      if (CONFIG.visibleWorkspaceOnly) {
-        const visible = tabs.filter(tab => (!tab.hidden && !tab.hasAttribute('hidden')) || tab === gBrowser.selectedTab);
-        // Zen can mark tabs hidden during workspace transitions: don't show a blank wheel.
-        if (visible.length) tabs = visible;
-      }
-      return tabs.slice(0, CONFIG.maxTabs);
+      const workspace = window.gZenWorkspaces?.activeWorkspace;
+      return Array.from(gBrowser.tabs)
+        .filter(tab => this.canSwitchTo(tab, workspace))
+        .slice(0, CONFIG.maxTabs);
     }
 
     isTrigger(event) {
@@ -203,12 +219,6 @@
         else this.show(false);
         return;
       }
-      if (CONFIG.interceptCtrlTab && event.ctrlKey && !event.altKey && !event.metaKey && event.key === 'Tab') {
-        this.swallow(event);
-        if (!this.opened) this.show(true);
-        if (this.opened) this.step(event.shiftKey ? -1 : +1);
-        return;
-      }
       if (!this.opened) return;
       if (event.key === 'Escape') {
         this.swallow(event);
@@ -216,7 +226,7 @@
       } else if (event.key === 'Enter' || event.key === ' ') {
         this.swallow(event);
         this.dismiss(true);
-      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown' || event.key === 'Tab') {
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown' || (event.key === 'Tab' && !event.ctrlKey)) {
         this.swallow(event);
         this.step(event.shiftKey ? -1 : +1);
       } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
@@ -225,24 +235,30 @@
       }
     }
 
-    onKeyup(event) {
-      if (!this.opened || !this.holdControl) return;
-      if (event.key === 'Control' || !event.ctrlKey) {
-        this.swallow(event);
-        this.dismiss(true);
-      }
+    onCtrlTab(event) {
+      if (event.defaultPreventedByChrome ||
+          !(event.ctrlKey && !event.altKey && !event.metaKey && event.key === 'Tab')) return;
+      this.swallow(event);
+      if (!this.opened) this.show(true);
+      if (this.opened) this.step(event.shiftKey ? -1 : 1);
     }
 
-    onWindowBlur() {
-      if (this.opened) this.dismiss(false);
+    onKeyup(event) {
+      if (!this.opened || !this.holdControl || event.key !== 'Control' || event.ctrlKey) return;
+      this.swallow(event);
+      this.dismiss(true);
+    }
+
+    onWindowBlur(event) {
+      if (event.target === window && this.opened) this.dismiss(false);
     }
 
     show(modifierHeld) {
       if (this.opened) return;
       this.tabs = this.listTabs();
       if (!this.tabs.length) return;
-      this.origin = gBrowser.selectedTab;
-      this.selected = Math.max(0, this.tabs.indexOf(this.origin));
+      this.selected = this.tabs.indexOf(gBrowser.selectedTab);
+      if (!modifierHeld && this.selected < 0) this.selected = 0;
       this.opened = true;
       this.holdControl = modifierHeld;
       this.rotation = 0;
@@ -268,6 +284,8 @@
         const tab = this.tabs[i];
         const card = this.cards[i];
         if (!tab || !card) break;
+        // A suspended tab is selectable, but leave it asleep until selected.
+        if (tab.hasAttribute('pending')) continue;
         const cached = this.snapshotCache.get(tab);
         if (cached && Date.now() - cached.timestamp < CONFIG.screenshotTTL) {
           this.setScreenshot(card, cached.url);
@@ -363,9 +381,9 @@
 
     step(delta) {
       if (!this.opened || !this.tabs.length) return;
-      this.selected = modulo(this.selected + delta, this.tabs.length);
-      // Phase-snap selection into lower arc when using the keyboard, without
-      // stopping the continuously rotating original summoning ring.
+      this.selected = this.selected < 0
+        ? (delta > 0 ? 0 : this.tabs.length - 1)
+        : modulo(this.selected + delta, this.tabs.length);
       this.updateFocus();
     }
 
@@ -401,7 +419,7 @@
         const sy = hover ? hover.x * 15 : 0;
         const focus = i === this.selected ? 1.08 : 1.0;
         const size = (0.82 + 0.18 * depth) * cardScale * focus;
-        card.style.transform = `translate3d(calc(-50% + ${x.toFixed(2)}px), calc(-50% + ${y.toFixed(2)}px), 0) perspective(650px) rotateX(${sx.toFixed(2)}deg) rotateY(${sy.toFixed(2)}deg) scale(${size.toFixed(3)})`;
+        card.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) perspective(650px) rotateX(${sx.toFixed(2)}deg) rotateY(${sy.toFixed(2)}deg) scale(${size.toFixed(3)})`;
         card.style.zIndex = String(Math.round(depth * 50) + (i === this.selected ? 100 : 1));
         card.style.opacity = String(clamp(.7 + .30 * depth, .7, 1));
       }
@@ -419,7 +437,8 @@
       window.cancelAnimationFrame(this.rafId);
       this.rafId = 0;
       this.cardPointer.clear();
-      if (activate && chosen && !chosen.closing) {
+      if (activate && chosen && this.canSwitchTo(chosen, window.gZenWorkspaces?.activeWorkspace) &&
+          Array.from(gBrowser.tabs).includes(chosen)) {
         try { gBrowser.selectedTab = chosen; } catch (error) { this.log('Could not select this tab', error); }
       }
     }
@@ -433,10 +452,14 @@
       this.dismiss(false);
       this.closed = true;
       window.removeEventListener('keydown', this.onKeydown, true);
-      window.removeEventListener('keyup', this.onKeyup, true);
+      if (CONFIG.interceptCtrlTab) {
+        window.removeEventListener('keydown', this.onCtrlTab, SYSTEM_CAPTURE);
+        window.removeEventListener('keyup', this.onKeyup, SYSTEM_CAPTURE);
+      }
       window.removeEventListener('blur', this.onWindowBlur, true);
-      gBrowser?.tabContainer?.removeEventListener('TabClose', this.onTabChange);
-      gBrowser?.tabContainer?.removeEventListener('TabOpen', this.onTabChange);
+      for (const type of TAB_CHANGE_EVENTS) {
+        gBrowser?.tabContainer?.removeEventListener(type, this.onTabChange);
+      }
       this.root?.remove();
       window[KEY] = null;
     }

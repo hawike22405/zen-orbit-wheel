@@ -42,7 +42,7 @@ zen-orbit-wheel/
 - Native `gBrowser` to enumerate and activate tabs in the **current Zen window**.
 - Optional `drawSnapshot()` content thumbnail previews, with a title/favicons fallback.
 - Keyboard selection, mouse selection, mouse-wheel selection, Escape cancellation.
-- Respects hidden Zen workspace tabs as best as the available tab attributes allow.
+- Lists open tabs in the active Zen workspace, including Essentials available there, and skips Zen's internal blank and Glance tabs.
 - Up to 24 tabs by default to avoid overcrowding; the original magic circle still dynamically changes based on tab count.
 
 ## 0. Preview first (no special privileges needed)
@@ -129,7 +129,7 @@ Restart Zen. Clear the startup cache via `about:support` only if the script or s
 - **Escape** dismisses the overlay without switching.
 - Press the alternate shortcut again to dismiss the overlay.
 
-**Experimental native Ctrl+Tab:** The script also listens for **Ctrl+Tab** / **Ctrl+Shift+Tab**. If the event reaches the custom capture listener before Zen's built-in system handler, holding Ctrl shows the wheel, additional Tab presses change the selected tab, and releasing Ctrl activates it. On some versions of Zen, this keyboard event is consumed by native Firefox-derived shortcut code before custom scripts can prevent it. Native Ctrl+Tab **is not guaranteed to be replaced**.
+**Experimental native Ctrl+Tab:** Hold **Ctrl** and press **Tab** to open the wheel and cycle forward. Add **Shift** to cycle backward, then release **Ctrl** to activate the highlighted tab. Orbit captures the shortcut in Gecko's system event group before the document-level native switcher. Compatibility can vary by Zen version.
 
 If Zen switches tabs as usual and Orbit does not appear, continue to use **Ctrl+Alt+O**. If you see both native switching and Orbit, change `interceptCtrlTab: true` to `false` in `OrbitWheel.uc.js` and restart Zen, preventing competing actions. Zen offers keyboard customizations at `about:keyboard`, but some Firefox-derived system shortcuts may not be remappable. Do **not** expect binding Ctrl+Tab in an ordinary WebExtension to solve this.
 
@@ -164,7 +164,7 @@ To rotate twice as fast, use `2 * Math.PI / 50`. To reduce screenshot work or im
 | Ctrl+Tab still opens the normal switcher | This can be expected due to native shortcut interception; use Ctrl+Alt+O instead |
 | Ctrl+Tab switches twice | Set `interceptCtrlTab: false`; use alternate shortcut |
 | Tab previews are blank or stylized | `drawSnapshot` is internal and only best-effort; Firefox/Zen may not allow all background tabs to be captured |
-| Hidden tabs not listed | Default filters hidden workspace tabs; change `visibleWorkspaceOnly` or switch workspaces first |
+| Tabs from another workspace are missing | Switch to that workspace first, or change `visibleWorkspaceOnly` in the script |
 | Screenshot/animation slows down on many tabs | Set `thumbnailCapture: false`, `maxTabs: 12` or lower, and reduce glow/blur in CSS |
 | CSS/JS broken after Zen update | This uses unsupported browser internals; remove the Orbit files and retry after compatibility changes |
 | Installer says loader missing | Install upstream fx-autoconfig to the correct profile and check its `chrome/utils` files; the helper never installs privileged loader files |

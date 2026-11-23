@@ -4,6 +4,7 @@ import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, readdi
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { runInNewContext } from 'node:vm';
 
 const root = resolve(import.meta.dirname, '..');
 const get = path => readFileSync(join(root, path), 'utf8');
@@ -42,6 +43,80 @@ test('Tab placement samples are evenly spaced and counterrotate', () => {
   assert(Math.abs(p0[0]) < 1e-9);
   assert(Math.abs(p0[1] - 1) < 1e-9);
   assert.deepEqual(getPoint(1, 2 * Math.PI / n).map(x => +x.toFixed(9)), [0, 1]);
+});
+
+test('Card styles allow the orbit to position each preview', () => {
+  const css = get('chrome/CSS/OrbitWheel.uc.css');
+  const cardRule = css.match(/#orbit-wheel-root \.orbit-card\s*\{([^}]+)\}/)?.[1];
+  assert(cardRule);
+  assert.doesNotMatch(cardRule, /\b(?:all|transform)\s*:[^;]*!important/);
+});
+
+test('Ctrl+Tab cycles only live tabs and checks that the chosen tab still exists', () => {
+  const tab = (label, attributes = {}, properties = {}) => ({
+    label, linkedBrowser: {},
+    hasAttribute: name => Object.hasOwn(attributes, name),
+    getAttribute: name => attributes[name] ?? null,
+    ...properties
+  });
+  const blank = tab('Zen blank', { 'zen-empty-tab': '' });
+  const first = tab('First');
+  let attemptedSleepingPreview = false;
+  const sleeping = tab('Asleep', { pending: '' }, {
+    linkedBrowser: { get browsingContext() { attemptedSleepingPreview = true; return null; } }
+  });
+  const essential = tab('Essential', { 'zen-workspace-id': 'other', 'zen-essential': 'true' });
+  const tabs = [
+    blank, first, sleeping, essential,
+    tab('Other workspace', { 'zen-workspace-id': 'other' }),
+    tab('Glance', { 'zen-glance-tab': '' }),
+    tab('Closing', {}, { closing: true }),
+    tab('Detached', {}, { isConnected: false }),
+    tab('Hidden', {}, { hidden: true })
+  ];
+  const gBrowser = { tabs, selectedTab: blank, tabContainer: new EventTarget() };
+  const element = () => ({
+    classList: { add() {}, remove() {}, toggle() {} },
+    style: { setProperty() {} },
+    setAttribute() {}, addEventListener() {}, append() {}, appendChild() {}, replaceChildren() {}
+  });
+  const document = { createElementNS: element, documentElement: element() };
+  const systemListeners = new Map();
+  const window = {
+    gBrowser, ORBIT_WHEEL_DEMO: true, gZenWorkspaces: { activeWorkspace: 'current' },
+    addEventListener(type, handler, options) {
+      if (options?.mozSystemGroup && options.capture) systemListeners.set(type, handler);
+    },
+    requestAnimationFrame() { return 1; },
+    cancelAnimationFrame() {}
+  };
+  runInNewContext(get('chrome/JS/OrbitWheel.uc.js'), { window, document, gBrowser, URL });
+  const wheel = window.__zenOrbitWheel_v1;
+  const press = (type, key, options = {}) => {
+    const event = {
+      key, ctrlKey: type === 'keydown', preventDefault() {}, stopPropagation() {},
+      stopImmediatePropagation() { this.stopped = true; }, ...options
+    };
+    systemListeners.get(type)(event);
+    assert.equal(event.stopped, true);
+  };
+
+  press('keydown', 'Tab');
+  assert.deepEqual(Array.from(wheel.tabs), [first, sleeping, essential]);
+  assert.equal(wheel.cards.length, 3);
+  assert.equal(attemptedSleepingPreview, false);
+  assert.equal(wheel.tabs[wheel.selected], first);
+  press('keydown', 'Tab');
+  assert.equal(wheel.tabs[wheel.selected], sleeping);
+  assert.equal(gBrowser.selectedTab, blank);
+  press('keyup', 'Control');
+  assert.equal(gBrowser.selectedTab, sleeping);
+
+  press('keydown', 'Tab', { shiftKey: true });
+  assert.equal(wheel.tabs[wheel.selected], first);
+  tabs.splice(tabs.indexOf(first), 1);
+  press('keyup', 'Control');
+  assert.equal(gBrowser.selectedTab, sleeping);
 });
 
 test('Profile installer copies only two files and cleans up', () => {
