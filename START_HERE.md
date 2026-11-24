@@ -1,19 +1,26 @@
 # Quick start — Orbit Wheel on Zen
 
-**Before installing:** open `demo/index.html` in Zen to see the wheel without modifying anything.
+**Nebula installed through Sine? Use these steps first.** The original fx-autoconfig instructions further down are for users *without* Sine.
 
-1. Open `about:profiles` in Zen, choose the profile **in use**, and copy its **Root Directory** path. Back up the profile. Close Zen.
-2. Install [MrOtherGuy/fx-autoconfig](https://github.com/MrOtherGuy/fx-autoconfig) to your **Zen installation** and **that same Zen profile**. Follow upstream's instructions carefully; do not overwrite existing loader configs. Verify `<PROFILE>/chrome/utils/boot.sys.mjs` exists.
-3. Copy these **two files** from this ZIP:
+1. Open Zen `about:profiles` and back up the active profile.
+2. In **Settings → Sine**, leave **Nebula enabled**.
+3. Inspect `chrome/JS/OrbitWheel.uc.js`. Enable Sine's option to install JS from unofficial sources only if you trust the code.
+4. Add `https://github.com/hawike22405/zen-orbit-wheel` as an external/custom GitHub mod in Sine.
+5. Enable the **Zen Orbit Wheel** script and stylesheet, then restart Zen.
+6. Test **Ctrl+Alt+O**. Native Ctrl+Tab replacement remains experimental.
+7. After Orbit works through Sine, remove any duplicate **manually installed** Orbit copies left in your profile's `chrome/JS` and `chrome/CSS` folders.
 
-   - `chrome/JS/OrbitWheel.uc.js` → `<PROFILE>/chrome/JS/OrbitWheel.uc.js`
-   - `chrome/CSS/OrbitWheel.uc.css` → `<PROFILE>/chrome/CSS/OrbitWheel.uc.css`
+See [SINE_NEBULA_FIX.md](SINE_NEBULA_FIX.md) for troubleshooting.
 
-   Or install both via `python3 scripts/install_profile.py --profile "<PROFILE>"` (on Windows use `py -3`).
-4. Restart Zen, optionally clear startup cache at `about:support` if it didn't load.
-5. Press **Ctrl+Alt+O** to open. Use arrows, mouse-wheel, click, Enter, Escape. The **Ctrl+Tab takeover is experimental** and may conflict with Zen's built-in shortcut.
-6. With more than seven eligible tabs, hold **Ctrl** and tap **Tab** eight times to highlight **Show all tabs**. Release **Ctrl** to open the list.
+## Alternative: legacy fx-autoconfig installation (without Sine)
 
-If the overlay doesn't work, remove the two files above and restart. The installer supports `--uninstall` and does not change any AutoConfig installation itself.
+**Before installing:** open `demo/index.html` in Zen to preview the wheel.
 
-For platform-specific setup, security considerations and settings, read [README.md](README.md).
+1. In `about:profiles`, identify and back up your active Zen profile.
+2. Follow the current [fx-autoconfig](https://github.com/MrOtherGuy/fx-autoconfig) instructions only if you do **not** already have Sine managing browser-chrome scripts. Never overwrite a shared loader.
+3. Copy `chrome/JS/OrbitWheel.uc.js` → `<PROFILE>/chrome/JS/OrbitWheel.uc.js`.
+4. Copy `chrome/CSS/OrbitWheel.uc.css` → `<PROFILE>/chrome/CSS/OrbitWheel.uc.css`.
+5. Restart Zen. Press **Ctrl+Alt+O**, navigate with arrow keys and Enter, or Escape to cancel.
+6. The wheel rotates up to seven eligible tabs. On the eighth Ctrl+Tab press (when applicable), **Show all tabs** is available.
+
+See [README.md](README.md) for the detailed installation, security caveats and limitations.

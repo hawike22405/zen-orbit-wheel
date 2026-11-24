@@ -15,6 +15,24 @@ test('Required files are distributed', () => {
   }
 });
 
+test('Sine package has a valid manifest for the standalone repository', () => {
+  const manifest = JSON.parse(get('theme.json'));
+  assert.equal(manifest.id, 'zen-orbit-wheel');
+  assert.equal(manifest.homepage, 'https://github.com/hawike22405/zen-orbit-wheel');
+  assert(existsSync(join(root, manifest.style.chrome)), 'Missing Sine chrome CSS');
+  const scripts = Object.keys(manifest.scripts);
+  assert.deepEqual(scripts, ['chrome/JS/OrbitWheel.uc.js']);
+  assert(existsSync(join(root, scripts[0])), 'Missing Sine chrome JS');
+  assert.deepEqual(manifest.scripts[scripts[0]].include, ['chrome://browser/content/browser.xhtml']);
+});
+
+test('Late Sine injection does not miss the load event', () => {
+  const src = get('chrome/JS/OrbitWheel.uc.js');
+  assert(src.includes('startupAttempts <= 120'));
+  assert(src.includes('window.setTimeout(tryInitialize, 100)'));
+  assert(src.includes('tryInitialize();'));
+});
+
 test('All JavaScript files parse', () => {
   for (const file of ['chrome/JS/OrbitWheel.uc.js', 'demo/fake-browser.js', 'demo/demo.js']) {
     const run = spawnSync(process.execPath, ['--check', join(root, file)], { encoding: 'utf8' });

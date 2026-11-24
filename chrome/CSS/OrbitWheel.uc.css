@@ -1,4 +1,4 @@
-/* Orbit Wheel. Loaded automatically by fx-autoconfig 0.8.5+ from chrome/CSS/. */
+/* Orbit Wheel. Loaded by Sine style.chrome or fx-autoconfig profile CSS. */
 /* Browser-chrome only. No rules target Zen's ordinary toolbar or sidebar. */
 @keyframes orbit-appear {
   from { opacity: 0; filter: blur(13px); transform: translateY(13px) scale(.955); }

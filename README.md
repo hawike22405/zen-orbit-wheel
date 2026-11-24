@@ -14,6 +14,20 @@ It is **not** a standard Firefox WebExtension: Firefox/Zen does not let extensio
 
 **Status:** self-contained implementation and interactive browser demo. Syntax and installer tests pass. The privileged script was **not runtime-tested inside Zen** in our build environment. Treat this as a **testable beta**, not a guaranteed one-click mod.
 
+## Use with Zen Nebula / Sine (recommended)
+
+If **Ctrl+Alt+O** stopped working after you installed Zen Nebula, your old fx-autoconfig-installed Orbit script may no longer be loading. Use the **Sine-compatible Orbit mod in this repository**, so Orbit and Nebula are managed together.
+
+1. In Zen, open **Settings → Sine**. Keep **Nebula** enabled.
+2. Review [`chrome/JS/OrbitWheel.uc.js`](chrome/JS/OrbitWheel.uc.js). In Sine, enable **JavaScript from unofficial sources** only if you trust the script; browser-chrome scripts have elevated privileges.
+3. Add this repository as a custom GitHub mod: `https://github.com/hawike22405/zen-orbit-wheel`.
+4. Enable **Zen Orbit Wheel** and its JS/CSS entries, restart Zen, then press **Ctrl+Alt+O**.
+5. After confirming the Sine version works, disable any manually copied Orbit scripts installed through an older loader so the same code is not executed twice.
+
+**Do not overwrite Sine's application-level `config.js` or reinstall fx-autoconfig over it.** For diagnostics and rollback, see [`SINE_NEBULA_FIX.md`](SINE_NEBULA_FIX.md).
+
+The previous fx-autoconfig installation instructions below apply only to installations **not managed by Sine**.
+
 ## What's included
 
 ```text
@@ -76,7 +90,7 @@ Path examples (they vary by install and OS, so trust `about:profiles`):
 - Linux: often `~/.zen/<profile-folder>` or a distribution/Flatpak-specific profile path
 - macOS: often `~/Library/Application Support/zen/Profiles/<profile-folder>`
 
-## 2. Install fx-autoconfig (one-time prerequisite)
+## 2. Install fx-autoconfig (only if you do not use Sine)
 
 Official project: https://github.com/MrOtherGuy/fx-autoconfig
 
