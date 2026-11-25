@@ -4,16 +4,16 @@
   "author": "hawike22405",
   "name": "Zen Orbit Wheel",
   "description": "Golden rotating tab-wheel switcher for Zen Browser. Sine compatible and designed to coexist with Nebula.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "createdAt": "2026-11-24",
-  "updatedAt": "2026-11-24",
+  "updatedAt": "2026-11-25",
   "style": {
     "chrome": "chrome/CSS/OrbitWheel.uc.css"
   },
   "scripts": {
     "chrome/JS/OrbitWheel.uc.js": {
       "name": "Orbit Wheel controller",
-      "description": "Golden tab wheel with Ctrl+Alt+O fallback and experimental Ctrl+Tab integration",
+      "description": "Golden tab wheel with MRU cycling, Ctrl+Alt+O fallback and experimental Ctrl+Tab integration",
       "include": [
         "chrome://browser/content/browser.xhtml"
       ]
