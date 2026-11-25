@@ -112,7 +112,11 @@ function createWheel(tabs, selectedTab) {
     (system ? systemListeners : listeners).get(type)(event);
     assert.equal(event.stopped, true);
   };
-  return { gBrowser, wheel, press };
+  const select = chosen => {
+    gBrowser.selectedTab = chosen;
+    gBrowser.tabContainer.dispatchEvent(new Event('TabSelect'));
+  };
+  return { gBrowser, wheel, press, select };
 }
 
 test('Ctrl+Tab skips inactive pins and checks that the chosen tab still exists', () => {
@@ -150,8 +154,8 @@ test('Ctrl+Tab skips inactive pins and checks that the chosen tab still exists',
   assert.equal(gBrowser.selectedTab, sleeping);
 
   press('keydown', 'Tab', { shiftKey: true });
-  assert.equal(wheel.tabs[wheel.selected], first);
-  tabs.splice(tabs.indexOf(first), 1);
+  assert.equal(wheel.tabs[wheel.selected], activePin);
+  tabs.splice(tabs.indexOf(activePin), 1);
   press('keyup', 'Control');
   assert.equal(gBrowser.selectedTab, sleeping);
 });
@@ -161,7 +165,7 @@ test('The eighth press selects Show all tabs after seven previews in either dire
   const inactivePin = tab('Unloaded pin', { pending: '' }, { pinned: true });
   const { gBrowser, wheel, press } = createWheel([inactivePin, ...openTabs], openTabs[25]);
 
-  for (const index of [26, 27, 0, 1, 2, 3, 4]) {
+  for (const index of [0, 1, 2, 3, 4, 5, 6]) {
     press('keydown', 'Tab');
     assert.equal(wheel.cards.length, 7);
     assert.equal(wheel.tabs[wheel.selected], openTabs[index]);
@@ -173,14 +177,14 @@ test('The eighth press selects Show all tabs after seven previews in either dire
   assert.equal(gBrowser.selectedTab, openTabs[25]);
   assert.equal(wheel.listHost.hidden, false);
   assert.equal(wheel.center.hidden, true);
-  assert.deepEqual(Array.from(wheel.tabs), openTabs);
+  assert.deepEqual(Array.from(wheel.tabs), [openTabs[25], ...openTabs.filter(tab => tab !== openTabs[25])]);
   assert.equal(wheel.cards.length, openTabs.length);
   press('keydown', 'ArrowDown', {}, false);
   press('keydown', 'Enter', {}, false);
-  assert.equal(gBrowser.selectedTab, openTabs[26]);
+  assert.equal(gBrowser.selectedTab, openTabs[0]);
   assert.equal(wheel.opened, false);
 
-  for (const index of [25, 24, 23, 22, 21, 20, 19]) {
+  for (const index of [27, 26, 24, 23, 22, 21, 20]) {
     press('keydown', 'Tab', { shiftKey: true });
     assert.equal(wheel.tabs[wheel.selected], openTabs[index]);
   }
@@ -189,7 +193,7 @@ test('The eighth press selects Show all tabs after seven previews in either dire
   press('keyup', 'Control');
   assert.equal(wheel.listHost.hidden, false);
   press('keydown', 'Escape', {}, false);
-  assert.equal(gBrowser.selectedTab, openTabs[26]);
+  assert.equal(gBrowser.selectedTab, openTabs[0]);
   assert.equal(wheel.opened, false);
 });
 
@@ -220,4 +224,28 @@ test('Profile installer copies only two files and cleans up', () => {
   assert(!existsSync(join(tmp, 'chrome', 'JS', 'OrbitWheel.uc.js')));
   assert(!existsSync(join(tmp, 'chrome', 'CSS', 'OrbitWheel.uc.css')));
   assert(existsSync(join(tmp, 'chrome', 'utils', 'boot.sys.mjs')), 'Installer must never remove the loader');
+});
+
+test('MRU seeds from lastAccessed, tracks selection and freezes the cycle until commit', () => {
+  const a = tab('A', {}, { lastAccessed: 10 });
+  const b = tab('B', {}, { lastAccessed: 30 });
+  const c = tab('C', {}, { lastAccessed: 20 });
+  const d = tab('D', {}, { lastAccessed: 40 });
+  const { gBrowser, wheel, press, select } = createWheel([a,b,c,d], a);
+  press('keydown', 'Tab');
+  assert.equal(wheel.tabs[wheel.selected], d);
+  press('keydown', 'Tab');
+  assert.equal(wheel.tabs[wheel.selected], b);
+  press('keydown', 'Escape', {}, false);
+  assert.equal(gBrowser.selectedTab, a);
+  select(c);
+  select(b);
+  press('keydown', 'Tab');
+  assert.equal(wheel.tabs[wheel.selected], c);
+  press('keyup', 'Control');
+  assert.equal(gBrowser.selectedTab, c);
+  press('keydown', 'Tab');
+  assert.equal(wheel.tabs[wheel.selected], b);
+  press('keyup', 'Control');
+  assert.equal(gBrowser.selectedTab, b);
 });

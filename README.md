@@ -69,7 +69,9 @@ zen-orbit-wheel/
 - Optional `drawSnapshot()` content thumbnail previews, with a title/favicons fallback.
 - Keyboard selection, mouse selection, mouse-wheel selection, Escape cancellation.
 - Lists open tabs in the active Zen workspace, including loaded pins and Essentials. Unloaded pins, internal blank tabs, and Glance tabs are skipped.
-- Up to seven previews rotate on the wheel. With more than seven eligible tabs, **Show all tabs** opens a scrollable list.
+- Up to seven previews rotate on the wheel. **Most Recently Used (MRU):** The wheel defaults to activation history, newest first, rather than tab-strip position. A quick Ctrl+Tab switches to the previously active eligible tab; repeating it toggles between the last two. Holding Ctrl cycles through a stable snapshot of the history; Escape does not activate the preview. Shift reverses the cycle. History is local to each browser window, seeded from Gecko's last-accessed timestamps when available, and filtered using the existing workspace and inactive-pin rules. Set `mostRecentlyUsed: false` in `OrbitWheel.uc.js` to restore tab-strip order. This applies to Firefox and Zen with a compatible browser-chrome loader; native shortcut interception remains version-dependent.
+
+With more than seven eligible tabs, **Show all tabs** opens a scrollable list.
 
 ## 0. Preview first (no special privileges needed)
 

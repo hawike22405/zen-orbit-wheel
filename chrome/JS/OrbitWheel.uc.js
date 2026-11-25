@@ -31,6 +31,8 @@
     screenshotTTL: 25000,
     // Restrict selection to the current Zen workspace.
     visibleWorkspaceOnly: true,
+    // Set false to restore tab-strip order.
+    mostRecentlyUsed: true,
     ringDiameter: 444,
   });
 
@@ -99,6 +101,10 @@
   class OrbitWheel {
     constructor() {
       this.tabs = [];
+      // Window-local activation history. Seed from Gecko's existing timestamps.
+      this.mru = Array.from(gBrowser.tabs).sort((a, b) =>
+        (Number(b.lastAccessed) || 0) - (Number(a.lastAccessed) || 0));
+      this.recordSelection(gBrowser.selectedTab);
       this.cards = [];
       this.selected = 0;
       this.opened = false;
@@ -186,7 +192,14 @@
       window.addEventListener('unload', () => this.destroy(), { once: true });
     }
 
-    onTabChange() {
+    recordSelection(tab) {
+      if (!tab) return;
+      this.mru = [tab, ...this.mru.filter(item => item !== tab)];
+    }
+
+    onTabChange(event) {
+      if (event.type === 'TabSelect') this.recordSelection(gBrowser.selectedTab);
+      if (event.type === 'TabClose') this.mru = this.mru.filter(tab => tab !== event.target);
       if (this.opened) this.dismiss(false);
     }
 
@@ -205,7 +218,17 @@
 
     listTabs() {
       const workspace = window.gZenWorkspaces?.activeWorkspace;
-      return Array.from(gBrowser.tabs).filter(tab => this.canSwitchTo(tab, workspace));
+      const live = Array.from(gBrowser.tabs);
+      const eligible = live.filter(tab => this.canSwitchTo(tab, workspace));
+      if (!CONFIG.mostRecentlyUsed) return eligible;
+      const liveSet = new Set(live);
+      this.mru = this.mru.filter(tab => liveSet.has(tab));
+      // Also synchronize with the actual selected tab if a loader missed an event.
+      this.recordSelection(gBrowser.selectedTab);
+      const ranks = new Map(this.mru.map((tab, index) => [tab, index]));
+      return eligible.sort((a, b) =>
+        (ranks.get(a) ?? Infinity) - (ranks.get(b) ?? Infinity) ||
+        (Number(b.lastAccessed) || 0) - (Number(a.lastAccessed) || 0));
     }
 
     isTrigger(event) {
@@ -270,6 +293,7 @@
       if (this.opened) return;
       const tabs = this.listTabs();
       if (!tabs.length) return;
+      this.sessionTabs = tabs.slice();
       const overflow = tabs.length > WHEEL_TAB_LIMIT;
       this.tabs = tabs;
       this.selected = tabs.indexOf(gBrowser.selectedTab);
@@ -308,7 +332,8 @@
 
     showAllTabs() {
       if (!this.opened || this.allAction.hidden) return;
-      const tabs = this.listTabs();
+      const eligible = new Set(this.listTabs());
+      const tabs = this.sessionTabs.filter(tab => eligible.has(tab));
       if (!tabs.length) {
         this.dismiss(false);
         return;
@@ -511,9 +536,13 @@
       this.root.classList.remove('orbit-visible');
       this.root.setAttribute('aria-hidden', 'true');
       this.stopAnimation();
+      this.sessionTabs = [];
       if (activate && chosen && this.canSwitchTo(chosen, window.gZenWorkspaces?.activeWorkspace) &&
           Array.from(gBrowser.tabs).includes(chosen)) {
-        try { gBrowser.selectedTab = chosen; } catch (error) { this.log('Could not select this tab', error); }
+        try {
+          gBrowser.selectedTab = chosen;
+          if (gBrowser.selectedTab === chosen) this.recordSelection(chosen);
+        } catch (error) { this.log('Could not select this tab', error); }
       }
     }
 
